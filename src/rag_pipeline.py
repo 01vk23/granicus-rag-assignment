@@ -83,7 +83,7 @@ class RAGPipeline:
             # ---------------------------
             # Similarity Threshold Guard
             # ---------------------------
-            if distances and min(distances) > 0.7:
+            if distances and min(distances) > 0.35:
                 return {
                     "answer": "I do not have enough information to answer this question.",
                     "confidence": 0.0
