@@ -2,13 +2,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from src.rag_pipeline import RAGPipeline
 import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Granicus RAG Chatbot")
 
-# Initialize pipeline once
 rag_pipeline = RAGPipeline()
-
-# Simple runtime metrics
 request_count = 0
 
 
@@ -23,12 +23,12 @@ class ChatResponse(BaseModel):
 
 
 @app.get("/health")
-def health():
+async def health():
     return {"status": "ok"}
 
 
 @app.get("/stats")
-def stats():
+async def stats():
     return {
         "indexed_documents": rag_pipeline.store.collection.count(),
         "total_requests": request_count
@@ -36,7 +36,7 @@ def stats():
 
 
 @app.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+async def chat(request: ChatRequest):
     global request_count
 
     if not request.question.strip():
@@ -44,10 +44,12 @@ def chat(request: ChatRequest):
 
     start = time.time()
 
-    response = rag_pipeline.ask(request.question)
+    response = await rag_pipeline.ask(request.question)
 
     latency = time.time() - start
     request_count += 1
+
+    logging.info(f"[API] Total latency: {latency:.2f}s")
 
     return {
         "answer": response["answer"],

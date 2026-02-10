@@ -1,40 +1,120 @@
+import time
+import logging
+import numpy as np
+
 from src.vectorstore.store import VectorStore
+from src.vectorstore.embeddings import Embedder
 from src.llm.context_builder import ContextBuilder
 from src.llm.generator import GroundedGenerator
+
+logging.basicConfig(level=logging.INFO)
 
 
 class RAGPipeline:
     def __init__(self):
-        self.store = VectorStore()
-        self.context_builder = ContextBuilder()
-        self.generator = GroundedGenerator()
+        start_time = time.time()
 
-    def ask(self, question: str, top_k: int = 3):
-        # Step 1: Retrieve
-        results = self.store.query(question, top_k=top_k)
+        try:
+            self.embedder = Embedder()
+            self.store = VectorStore(embedder=self.embedder)
+            self.context_builder = ContextBuilder()
+            self.generator = GroundedGenerator()
 
-        # Step 2: Check if retrieval empty
-        if not results["documents"][0]:
+            # High-threshold cache
+            self.cache = {}
+
+            logging.info(
+                f"[RAGPipeline] Initialized in {time.time() - start_time:.2f}s"
+            )
+
+        except Exception as e:
+            logging.error(f"[RAGPipeline INIT ERROR] {str(e)}")
+            raise e
+
+    async def ask(self, question: str, top_k: int = 5):
+        pipeline_start = time.time()
+
+        try:
+            # ---------------------------
+            # Cache Check
+            # ---------------------------
+            if question in self.cache:
+                logging.info("[RAG] Cache hit")
+                return self.cache[question]
+
+            # ---------------------------
+            # Retrieval
+            # ---------------------------
+            retrieval_start = time.time()
+            results = self.store.query(question, top_k=top_k)
+            logging.info(
+                f"[RAG] Retrieval time: {time.time() - retrieval_start:.2f}s"
+            )
+
+            docs = results.get("documents", [[]])[0]
+            distances = results.get("distances", [[]])[0]
+
+            if not docs:
+                return {
+                    "answer": "I do not have enough information to answer this question.",
+                    "confidence": 0.0
+                }
+
+            # ---------------------------
+            # Similarity Threshold Guard
+            # ---------------------------
+            if distances and min(distances) > 0.5:
+                return {
+                    "answer": "I do not have enough information to answer this question.",
+                    "confidence": 0.0
+                }
+
+            # ---------------------------
+            # Re-ranking (keep best 2)
+            # ---------------------------
+            ranked = sorted(zip(docs, distances), key=lambda x: x[1])
+            top_docs = [doc for doc, _ in ranked[:2]]
+
+            # ---------------------------
+            # Context Build
+            # ---------------------------
+            context = "\n\n".join(top_docs)
+
+            # ---------------------------
+            # Generation
+            # ---------------------------
+            generation_start = time.time()
+            answer = await self.generator.generate(question, context)
+            logging.info(
+                f"[RAG] Generation time: {time.time() - generation_start:.2f}s"
+            )
+
+            # ---------------------------
+            # Confidence
+            # ---------------------------
+            avg_distance = np.mean([d for _, d in ranked[:2]])
+            confidence = max(0.0, 1 - avg_distance)
+
+            result = {
+                "answer": answer,
+                "confidence": round(confidence, 3)
+            }
+
+            # ---------------------------
+            # High-Confidence Cache (>0.85)
+            # ---------------------------
+            if confidence > 0.9:
+                self.cache[question] = result
+
+            logging.info(
+                f"[RAG] Total pipeline time: {time.time() - pipeline_start:.2f}s"
+            )
+
+            return result
+
+        except Exception as e:
+            logging.error(f"[RAG ERROR] {str(e)}")
             return {
                 "answer": "I do not have enough information to answer this question.",
                 "confidence": 0.0
             }
-
-        # Step 3: Build context
-        context = self.context_builder.build_context(results)
-
-        # Step 4: Generate grounded answer
-        answer = self.generator.generate(question, context)
-
-        # Step 5: Simple confidence score based on similarity
-        distances = results.get("distances", [[]])[0]
-        if distances:
-            avg_distance = sum(distances) / len(distances)
-            confidence = max(0.0, 1 - avg_distance)
-        else:
-            confidence = 0.0
-
-        return {
-            "answer": answer,
-            "confidence": round(confidence, 3)
-        }

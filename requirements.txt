@@ -1,8 +1,35 @@
+# Core API
 fastapi
-uvicorn
-chromadb
+uvicorn[standard]
+
+# Embeddings
 sentence-transformers
-transformers
 torch
+numpy
+
+# GPU LLM (Colab support)
+transformers
 accelerate
-pydantic
+bitsandbytes
+
+# Vector Database
+chromadb
+
+# PDF Processing
+pdfplumber
+
+# HTTP (Ollama client)
+httpx
+
+# Data handling
+pandas
+
+# Logging & Utilities
+python-dotenv
+
+# Testing
+pytest
+pytest-asyncio
+
+# Optional (for better performance in Colab)
+scipy
