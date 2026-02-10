@@ -44,44 +44,55 @@ CRITICAL RULES:
 2. Do NOT invent missing details.
 3. If the answer is not clearly found in the context, respond:
    "I do not have enough information to answer this question."
-4. If the question is ambiguous:
-   - Identify relevant products or plan tiers.
-   - List possible options.
-   - Ask for clarification.
-5. Keep answers concise and structured.
-6. Prefer bullet points when listing features.
+4. If the question is ambiguous (e.g., asks about pricing or features without specifying product or plan tier):
+   - Identify relevant products or plan tiers mentioned in the context.
+   - Briefly list the possible options found.
+   - Ask the user to clarify which specific product or plan they mean.
+   - Try to be specific rather than being verbose.
+   - Ask user for specific details in case of ambiguity or multiple answers.
+5. If information differs across context blocks, clearly distinguish them by product or plan tier.
+6. Do NOT say "According to the context".
+7. Keep answers concise, structured, and factual.
+8. Prefer bullet points for multiple features or comparisons.
 
-Context:
+Important: Frame answers naturally so the user does not feel you are reading a document.
+
+Context Blocks:
 {context[:1000]}
 
-Question:
+User Question:
 {question}
 
-Answer:
+Final Answer:
 """
 
         try:
-            # ---------------- GPU PATH (Colab) ----------------
+            # ---------------- GPU PATH ----------------
             if self.use_gpu_llm:
                 inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+
+                input_length = inputs["input_ids"].shape[1]
 
                 with torch.no_grad():
                     outputs = self.model.generate(
                         **inputs,
                         max_new_tokens=80,
-                        temperature=0.0,
                         do_sample=False
                     )
 
-                answer = self.tokenizer.decode(
-                    outputs[0], skip_special_tokens=True
-                )
+                generated_tokens = outputs[0][input_length:]
 
+                answer = self.tokenizer.decode(
+                    generated_tokens,
+                    skip_special_tokens=True
+                ).strip()
+
+                logging.info(f"[Generator GPU] Question: {question}")
                 logging.info(
                     f"[Generator GPU] Generation time: {time.time() - start_time:.2f}s"
                 )
 
-                return answer.strip()
+                return answer if answer else "I do not have enough information to answer this question."
 
             # ---------------- CPU PATH (Ollama) ----------------
             else:
@@ -102,6 +113,7 @@ Answer:
                 result = response.json()
                 answer = result.get("response", "").strip()
 
+                logging.info(f"[Generator CPU] Question: {question}")
                 logging.info(
                     f"[Generator CPU] Ollama time: {time.time() - start_time:.2f}s"
                 )
