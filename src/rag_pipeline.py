@@ -93,7 +93,7 @@ class RAGPipeline:
             # Re-ranking (keep best 2)
             # ---------------------------
             ranked = sorted(zip(docs, distances), key=lambda x: x[1])
-            top_docs = [doc for doc, _ in ranked[:2]]
+            top_docs = [doc for doc, _ in ranked[:3]]
 
             # ---------------------------
             # Context Build
@@ -123,7 +123,7 @@ class RAGPipeline:
             # ---------------------------
             # High-Confidence Cache (>0.85)
             # ---------------------------
-            if confidence > 0.9:
+            if confidence > 0.85:
                 self.cache[question] = result
 
             logging.info(
