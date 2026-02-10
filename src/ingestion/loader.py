@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Dict, Optional
+import pdfplumber
 
 
 class Document:
@@ -142,7 +143,7 @@ class DocumentLoader:
         Extract text and tables from PDF using pdfplumber.
         Tables are flattened into row-wise semantic text.
         """
-        import pdfplumber
+        
 
         text_blocks = []
         table_blocks = []

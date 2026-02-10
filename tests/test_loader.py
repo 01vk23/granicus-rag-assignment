@@ -1,15 +1,24 @@
+import pytest
 from src.ingestion.loader import DocumentLoader
 
-if __name__ == "__main__":
+
+def test_loader_loads_documents():
     loader = DocumentLoader(data_dir="data")
     documents = loader.load()
 
-    print(f"\nLoaded {len(documents)} documents\n")
+    # Ensure documents were loaded
+    assert isinstance(documents, list)
 
-    for doc in documents:
-        print("----")
-        print("ID:", doc.doc_id)
-        print("Source:", doc.source)
-        print("Type:", doc.doc_type)
-        print(doc.content[:300])
-        print()
+    # Ensure at least one valid document exists
+    assert len(documents) > 0
+
+    # Validate structure of first document
+    first_doc = documents[0]
+
+    assert hasattr(first_doc, "doc_id")
+    assert hasattr(first_doc, "source")
+    assert hasattr(first_doc, "doc_type")
+    assert hasattr(first_doc, "content")
+
+    assert isinstance(first_doc.content, str)
+    assert len(first_doc.content) > 50

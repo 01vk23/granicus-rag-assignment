@@ -6,6 +6,9 @@ from src.vectorstore.store import VectorStore
 from src.vectorstore.embeddings import Embedder
 from src.llm.context_builder import ContextBuilder
 from src.llm.generator import GroundedGenerator
+from src.ingestion.loader import DocumentLoader
+from src.chunking.chunker import SmartChunker
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,6 +22,23 @@ class RAGPipeline:
             self.store = VectorStore(embedder=self.embedder)
             self.context_builder = ContextBuilder()
             self.generator = GroundedGenerator()
+
+                        # ---------------------------
+            # Auto Index Initialization
+            # ---------------------------
+            if self.store.is_empty():
+                logging.info("[RAGPipeline] Vector store empty. Initializing index...")
+
+                loader = DocumentLoader(data_dir="data")
+                documents = loader.load()
+
+                chunker = SmartChunker()
+                chunks = chunker.chunk_documents(documents)
+
+                self.store.index_chunks(chunks)
+
+                logging.info("[RAGPipeline] Index initialization complete.")
+
 
             # High-threshold cache
             self.cache = {}

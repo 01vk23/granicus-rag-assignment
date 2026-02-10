@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+venv/
+.env
+.git
+.gitignore
+chroma_db/
+evaluations/rag_results.xlsx
+

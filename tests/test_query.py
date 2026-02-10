@@ -1,22 +1,35 @@
+import os
+import uuid
+from src.ingestion.loader import DocumentLoader
+from src.chunking.chunker import SmartChunker
 from src.vectorstore.store import VectorStore
 from src.vectorstore.embeddings import Embedder
 
 
-if __name__ == "__main__":
-    print("Initializing embedder...")
+def test_query_returns_results():
+
+    # Create isolated test DB
+    test_dir = f"test_chroma_{uuid.uuid4().hex}"
+    os.makedirs(test_dir, exist_ok=True)
+
+    loader = DocumentLoader(data_dir="data")
+    documents = loader.load()
+
+    chunker = SmartChunker()
+    chunks = chunker.chunk_documents(documents)
+
     embedder = Embedder()
+    store = VectorStore(embedder=embedder, persist_dir=test_dir)
 
-    print("Initializing vector store...")
-    store = VectorStore(embedder=embedder)
+    store.index_chunks(chunks)
 
-    count = store.collection.count()
-    print("Collection count:", count)
-
-    query = "What are the key features of GovDelivery Communications Cloud?"
-
-    print("\nRunning query...")
+    query = "GovDelivery Communications Cloud"
     results = store.query(query, top_k=2)
 
-    print("\nQuery:", query)
-    print("\nTop Results:\n")
-    print(results)
+    documents_result = results.get("documents", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+
+    # Assertions
+    assert len(documents_result) > 0
+    assert len(distances) > 0
+    assert len(documents_result) == len(distances)

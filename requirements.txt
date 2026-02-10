@@ -1,35 +1,53 @@
+# -----------------------------
 # Core API
+# -----------------------------
 fastapi
 uvicorn[standard]
+pydantic
 
+# -----------------------------
 # Embeddings
+# -----------------------------
 sentence-transformers
 torch
 numpy
+scipy
 
-# GPU LLM (Colab support)
+# -----------------------------
+# HuggingFace / LLM Support
+# -----------------------------
 transformers
 accelerate
 bitsandbytes
 
+# -----------------------------
 # Vector Database
+# -----------------------------
 chromadb
 
+# -----------------------------
 # PDF Processing
+# -----------------------------
 pdfplumber
+pdfminer.six
 
+# -----------------------------
 # HTTP (Ollama client)
+# -----------------------------
 httpx
 
-# Data handling
+# -----------------------------
+# Data Handling
+# -----------------------------
 pandas
 
-# Logging & Utilities
+# -----------------------------
+# Environment & Utilities
+# -----------------------------
 python-dotenv
 
+# -----------------------------
 # Testing
+# -----------------------------
 pytest
 pytest-asyncio
-
-# Optional (for better performance in Colab)
-scipy

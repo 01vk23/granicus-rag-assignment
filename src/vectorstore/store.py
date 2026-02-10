@@ -29,12 +29,24 @@ class VectorStore:
         except Exception as e:
             logging.error(f"[VectorStore INIT ERROR] {str(e)}")
             raise e
+        
+ # ---------------------------
+    # Check if Empty
+    # ---------------------------
+    def is_empty(self) -> bool:
+        try:
+            return self.collection.count() == 0
+        except Exception as e:
+            logging.error(f"[VectorStore EMPTY CHECK ERROR] {str(e)}")
+            return True
 
     # ---------------------------
     # Indexing
     # ---------------------------
     def index_chunks(self, chunks: List[Chunk]):
         start_time = time.time()
+
+        
 
         try:
             if not chunks:

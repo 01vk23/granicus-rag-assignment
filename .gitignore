@@ -6,4 +6,16 @@ __pycache__/
 data/processed/
 chroma_db/
 venv/
+# Test vector DB folders
+test_chroma_*/
+
+# Chroma persistent DB
+chroma_db/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
 

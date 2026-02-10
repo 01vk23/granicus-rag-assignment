@@ -24,7 +24,18 @@ class ChatResponse(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    try:
+        count = rag_pipeline.store.collection.count()
+        return {
+            "status": "ok",
+            "vectorstore_ready": True,
+            "indexed_chunks": count
+        }
+    except Exception:
+        return {
+            "status": "error",
+            "vectorstore_ready": False
+        }
 
 
 @app.get("/stats")

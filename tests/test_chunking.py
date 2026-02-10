@@ -1,21 +1,25 @@
 from src.ingestion.loader import DocumentLoader
 from src.chunking.chunker import SmartChunker
 
-if __name__ == "__main__":
+
+def test_chunking_creates_chunks():
     loader = DocumentLoader(data_dir="data")
     documents = loader.load()
 
-    print(f"\nLoaded {len(documents)} documents")
-
     chunker = SmartChunker()
-
     chunks = chunker.chunk_documents(documents)
 
-    print(f"\nCreated {len(chunks)} chunks\n")
+    # Ensure chunks are created
+    assert isinstance(chunks, list)
+    assert len(chunks) > 0
 
-    for chunk in chunks[:3]:
-        print("----")
-        print("Chunk ID:", chunk.chunk_id)
-        print("Source:", chunk.source)
-        print(chunk.content[:400])
-        print()
+    # Validate first chunk structure
+    first_chunk = chunks[0]
+
+    assert hasattr(first_chunk, "chunk_id")
+    assert hasattr(first_chunk, "source")
+    assert hasattr(first_chunk, "content")
+    assert hasattr(first_chunk, "metadata")
+
+    assert isinstance(first_chunk.content, str)
+    assert len(first_chunk.content) > 50
