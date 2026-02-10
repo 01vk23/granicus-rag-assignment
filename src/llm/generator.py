@@ -12,15 +12,25 @@ class GroundedGenerator:
         self.use_gpu_llm = torch.cuda.is_available()
 
         if self.use_gpu_llm:
-            logging.info("[Generator] CUDA detected. Using Transformers GPU model.")
+            logging.info("[Generator] CUDA detected. Using Mistral-7B-Instruct (4-bit).")
 
-            from transformers import AutoTokenizer, AutoModelForCausalLM
+            from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
-            self.hf_model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+            self.hf_model_name = "mistralai/Mistral-7B-Instruct-v0.2"
+
+            # 4-bit quantization for Kaggle GPU
+            quant_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4"
+            )
+
             self.tokenizer = AutoTokenizer.from_pretrained(self.hf_model_name)
+
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.hf_model_name,
-                torch_dtype=torch.float16,
+                quantization_config=quant_config,
                 device_map="auto"
             )
 
@@ -35,30 +45,84 @@ class GroundedGenerator:
         start_time = time.time()
 
         prompt = f"""
-You are a government technology assistant specialized in Granicus products.
+You are a highly disciplined government technology assistant specialized in Granicus products.
 
-You MUST answer using ONLY the provided context blocks.
+STRICT INSTRUCTIONS:
 
-CRITICAL RULES:
-1. Do NOT use any external knowledge.
-2. Do NOT invent missing details.
-3. If the answer is not clearly found in the context, respond:
-   "I do not have enough information to answer this question."
-4. If the question is ambiguous (e.g., asks about pricing or features without specifying product or plan tier):
-   - Identify relevant products or plan tiers mentioned in the context.
-   - Briefly list the possible options found.
-   - Ask the user to clarify which specific product or plan they mean.
-   - Try to be specific rather than being verbose.
-   - Ask user for specific details in case of ambiguity or multiple answers.
-5. If information differs across context blocks, clearly distinguish them by product or plan tier.
-6. Do NOT say "According to the context".
-7. Keep answers concise, structured, and factual.
-8. Prefer bullet points for multiple features or comparisons.
+You MUST answer ONLY using the provided context.
+You MUST NOT use any external knowledge.
+You MUST NOT assume missing details.
+You MUST NOT fabricate product names, pricing, features, or integrations.
 
-Important: Frame answers naturally so the user does not feel you are reading a document.
+If the answer is NOT clearly present in the context:
+Respond exactly:
+"I do not have enough information to answer this question."
 
-Context Blocks:
-{context[:1000]}
+----------------------------
+HANDLING AMBIGUOUS QUESTIONS
+----------------------------
+
+If a question is vague or underspecified, for example:
+
+- "What is the pricing?"
+- "Which plan is best?"
+- "Tell me about the product."
+- "What does it include?"
+- "How much does it cost?"
+
+You MUST:
+
+1. Identify possible relevant products or tiers found in the context.
+2. Briefly list available options from context.
+3. Ask the user to clarify which specific product or plan tier they mean.
+4. Do NOT guess.
+5. Do NOT recommend.
+
+Example:
+
+If user asks:
+"How much does it cost?"
+
+Correct behavior:
+"The context mentions multiple plan tiers (Starter, Professional, Enterprise). Please specify which plan tier you are referring to."
+
+----------------------------
+OUT-OF-SCOPE QUESTIONS
+----------------------------
+
+If the question is unrelated to Granicus documentation (e.g., weather, competitors, CEO phone number, general opinion):
+
+Respond exactly:
+"I do not have enough information to answer this question."
+
+Do NOT explain why.
+Do NOT apologize excessively.
+Keep response minimal and factual.
+
+----------------------------
+MULTIPLE CONTEXT BLOCKS
+----------------------------
+
+If different blocks contain different information:
+- Clearly separate answers by product or plan tier.
+- Use bullet points.
+- Stay concise.
+
+----------------------------
+STYLE REQUIREMENTS
+----------------------------
+
+- Be structured and factual.
+- Prefer bullet points when listing features.
+- Do NOT say "According to the context".
+- Keep answer concise.
+- Do NOT repeat the question.
+- Do NOT be verbose.
+
+----------------------------
+
+Context:
+{context[:1500]}
 
 User Question:
 {question}
@@ -67,17 +131,17 @@ Final Answer:
 """
 
         try:
-            # ---------------- GPU PATH ----------------
+            # ---------------- GPU PATH (Mistral) ----------------
             if self.use_gpu_llm:
                 inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-
                 input_length = inputs["input_ids"].shape[1]
 
                 with torch.no_grad():
                     outputs = self.model.generate(
                         **inputs,
-                        max_new_tokens=80,
-                        do_sample=False
+                        max_new_tokens=120,
+                        do_sample=False,
+                        temperature=0.01
                     )
 
                 generated_tokens = outputs[0][input_length:]
@@ -104,8 +168,8 @@ Final Answer:
                             "prompt": prompt,
                             "stream": False,
                             "options": {
-                                "temperature": 0.0,
-                                "num_predict": 75
+                                "temperature": 0.01,
+                                "num_predict": 100
                             }
                         }
                     )
